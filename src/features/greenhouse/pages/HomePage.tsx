@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getUserSession } from "../model/session.store";
 import { getSimulationSession } from "../model/simulationSession.store";
-import { listGreenhousesByUserPaged, type InvernaderoApiRespuesta } from "../services/greenhouseApi";
+import {
+  listAllGreenhousesPaged,
+  listGreenhousesByUserPaged,
+  resolveCurrentUserId,
+  type InvernaderoApiRespuesta
+} from "../services/greenhouseApi";
 
 const PAGE_SIZE = 5;
 
@@ -23,18 +28,18 @@ export function HomePage() {
   const [apiError, setApiError] = useState("");
 
   useEffect(() => {
-    if (!session.idUsuario) {
-      setGreenhouses([]);
-      return;
-    }
-
     let isActive = true;
 
     async function loadGreenhouses() {
       setIsLoading(true);
       setApiError("");
       try {
-        const { items, total } = await listGreenhousesByUserPaged(session.idUsuario, currentPage, PAGE_SIZE);
+        const resolvedUserId = session.idUsuario || (session.token && session.correo ? await resolveCurrentUserId(session.correo, session.token) : "");
+        const result = resolvedUserId
+          ? await listGreenhousesByUserPaged(resolvedUserId, currentPage, PAGE_SIZE)
+          : await listAllGreenhousesPaged(currentPage, PAGE_SIZE);
+
+        const { items, total } = result;
         if (isActive) {
           setGreenhouses(items);
           setTotalItems(total);
@@ -45,9 +50,18 @@ export function HomePage() {
           }
         }
       } catch (error) {
-        if (isActive) {
-          setApiError(error instanceof Error ? error.message : "No se pudieron cargar los invernaderos");
-          setTotalItems(0);
+        try {
+          const fallback = await listAllGreenhousesPaged(currentPage, PAGE_SIZE);
+          if (isActive) {
+            setGreenhouses(fallback.items);
+            setTotalItems(fallback.total);
+            setApiError("");
+          }
+        } catch (fallbackError) {
+          if (isActive) {
+            setApiError(fallbackError instanceof Error ? fallbackError.message : "No se pudieron cargar los invernaderos");
+            setTotalItems(0);
+          }
         }
       } finally {
         if (isActive) {
@@ -68,7 +82,7 @@ export function HomePage() {
       isActive = false;
       window.removeEventListener("focus", onWindowFocus);
     };
-  }, [session.idUsuario, currentPage]);
+  }, [session.idUsuario, session.token, session.correo, currentPage]);
 
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const canGoPrev = currentPage > 0;

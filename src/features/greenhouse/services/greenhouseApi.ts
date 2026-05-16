@@ -47,6 +47,7 @@ interface BackendUsuarioRef {
 interface BackendInvernadero {
   idInvernadero?: number | string;
   usuario?: BackendUsuarioRef | null;
+  idUsuario?: number | string;
   nombre?: string;
   ubicacion?: string | null;
   estado?: string | null;
@@ -64,6 +65,11 @@ interface BackendInvernaderoActuador {
   actuador?: BackendCatalogRef | null;
 }
 
+interface BackendUsuarioListado {
+  idUsuario?: number | string;
+  correo?: string;
+}
+
 function buildAuthHeaders(): Record<string, string> {
   const session = getUserSession();
   return session.token ? { Authorization: `Bearer ${session.token}` } : {};
@@ -75,15 +81,38 @@ function toUsuarioIdValue(idUsuario: string): number | string {
 }
 
 function mapBackendInvernadero(invernadero: BackendInvernadero): InvernaderoApiRespuesta {
+  const idUsuario = invernadero.usuario?.idUsuario ?? invernadero.idUsuario ?? "";
   return {
     idInvernadero: String(invernadero.idInvernadero ?? ""),
-    idUsuario: String(invernadero.usuario?.idUsuario ?? ""),
+    idUsuario: String(idUsuario),
     nombre: invernadero.nombre ?? "",
     ubicacion: invernadero.ubicacion ?? null,
     estado: invernadero.estado === "PRODUCCION" ? "PRODUCCION" : "INACTIVO",
     nombresSensor: [],
     nombresActuador: []
   };
+}
+
+export async function resolveCurrentUserId(correo: string, token: string): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const usuarios = (await response.json()) as BackendUsuarioListado[];
+  const match = usuarios.find((usuario) => usuario.correo === correo);
+
+  if (!match || match.idUsuario === undefined || match.idUsuario === null) {
+    throw new Error("No se pudo identificar el usuario autenticado");
+  }
+
+  return String(match.idUsuario);
 }
 
 async function parseApiError(response: Response): Promise<string> {
@@ -137,7 +166,6 @@ export async function createGreenhouse(payload: CrearInvernaderoPayload): Promis
 
 export async function listGreenhousesByUser(idUsuario: string): Promise<InvernaderoApiRespuesta[]> {
   const response = await fetch(`${API_BASE_URL}/api/invernaderos`, {
-    headers: buildAuthHeaders(),
     cache: "no-store"
   });
 
@@ -155,7 +183,6 @@ export async function listGreenhousesByUserPaged(
   size: number
 ): Promise<RespuestaPaginaInvernaderos> {
   const response = await fetch(`${API_BASE_URL}/api/invernaderos`, {
-    headers: buildAuthHeaders(),
     cache: "no-store"
   });
 
@@ -173,6 +200,26 @@ export async function listGreenhousesByUserPaged(
   return {
     items: pagedItems,
     total: items.length
+  };
+}
+
+export async function listAllGreenhousesPaged(page: number, size: number): Promise<RespuestaPaginaInvernaderos> {
+  const response = await fetch(`${API_BASE_URL}/api/invernaderos`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const items = (await response.json()) as BackendInvernadero[];
+  const mappedItems = items.map(mapBackendInvernadero);
+  const start = Math.max(0, page) * Math.max(1, size);
+  const pagedItems = mappedItems.slice(start, start + Math.max(1, size));
+
+  return {
+    items: pagedItems,
+    total: mappedItems.length
   };
 }
 

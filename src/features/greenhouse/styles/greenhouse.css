@@ -1,0 +1,596 @@
+:root {
+  --gh-bg: #eef5ec;
+  --gh-surface: #ffffff;
+  --gh-topbar: #3d9f49;
+  --gh-primary: #36d30b;
+  --gh-primary-strong: #36d30b;
+  --gh-border: #cfe2cf;
+  --gh-text: #152015;
+  --gh-muted: #4d5e4d;
+  --gh-error: #b42318;
+  --gh-success: #0f7a2f;
+}
+
+.management-shell {
+  min-height: 100vh;
+  background-image:
+    var(--auth-background-image),
+    radial-gradient(circle at 10% 15%, rgba(106, 173, 84, 0.12), transparent 30%),
+    radial-gradient(circle at 90% 10%, rgba(70, 147, 89, 0.1), transparent 34%),
+    linear-gradient(180deg, #f6fbf4, var(--gh-bg));
+  background-size: cover, 100% 100%, 100% 100%, 100% 100%;
+  background-position: center center, center center, center center, center center;
+  background-repeat: no-repeat;
+}
+
+.management-topbar {
+  height: 72px;
+  background: var(--gh-topbar);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.menu-trigger {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.menu-trigger-lines {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.menu-line {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+.menu-trigger:focus-visible,
+.menu-drawer button:focus-visible,
+.form-card button:focus-visible,
+.form-card input:focus-visible,
+.form-card select:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.session-email {
+  margin: 0;
+  max-width: min(68vw, 320px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.menu-drawer {
+  position: fixed;
+  top: 72px;
+  left: 0;
+  width: min(280px, 85vw);
+  height: calc(100vh - 72px);
+  background: var(--gh-surface);
+  border-right: 1px solid var(--gh-border);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.12);
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+  z-index: 50;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-drawer.is-open {
+  transform: translateX(0);
+}
+
+.menu-nav {
+  flex: 1;
+}
+
+.menu-title {
+  margin: 2px 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.menu-drawer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.menu-drawer button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  background: #f8fcf7;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--gh-text);
+  cursor: pointer;
+}
+
+.menu-drawer button:hover {
+  background: #edf7ec;
+}
+
+.menu-drawer button.active {
+  background: #36d30b;
+  border-color: #36d30b;
+  color: #ffffff;
+}
+
+.menu-drawer .logout-button {
+  border: 1px solid #FF0000;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #FF0000;
+  text-align: center;
+  cursor: pointer;
+}
+
+.menu-drawer .logout-button:hover {
+  background: #FF0000;
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 72px 0 0;
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
+  z-index: 45;
+}
+
+.management-content {
+  padding: 20px 16px 30px;
+}
+
+.management-page {
+  display: flex;
+  justify-content: center;
+}
+
+.management-card {
+  width: min(760px, 100%);
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(25, 48, 24, 0.07);
+}
+
+.management-card h1 {
+  margin: 0 0 14px;
+}
+
+.management-card p {
+  color: var(--gh-muted);
+}
+
+.management-card p.field-error {
+  color: var(--gh-error);
+}
+
+.home-greenhouses {
+  margin-top: 18px;
+  border-top: 1px solid var(--gh-border);
+  padding-top: 14px;
+}
+
+.home-greenhouses h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+.home-greenhouse-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.home-greenhouse-item {
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: #f9fcf8;
+}
+
+.home-greenhouse-item h3 {
+  margin: 0;
+  color: var(--gh-text);
+  font-size: 1rem;
+}
+
+.home-greenhouse-item p {
+  margin: 4px 0 0;
+}
+
+.home-pagination {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.home-pagination p {
+  margin: 0;
+  color: var(--gh-text);
+  font-weight: 600;
+}
+
+.home-pagination .secondary-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondary-action {
+  border: 1px solid var(--gh-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  color: var(--gh-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-action:hover {
+  background: #edf7ec;
+}
+
+.secondary-action:focus-visible {
+  outline: 3px solid rgba(61, 159, 73, 0.45);
+  outline-offset: 2px;
+}
+
+.form-card {
+  display: grid;
+  gap: 10px;
+}
+
+.form-card label,
+.form-card legend,
+.form-card h2 {
+  font-weight: 600;
+  color: var(--gh-text);
+}
+
+.form-card input {
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 1rem;
+  background: #fbfefb;
+}
+
+.form-card select {
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 1rem;
+  background: #fbfefb;
+}
+
+.form-card fieldset {
+  margin: 6px 0;
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.form-card fieldset.checklist-block {
+  background: #fffdec;
+}
+
+.checkbox-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-card button.primary {
+  margin-top: 8px;
+  border: 1px solid #2ea90d;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #36d30b;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field-error {
+  margin: -2px 0 2px;
+  font-size: 0.9rem;
+  color: var(--gh-error);
+}
+
+.success-message {
+  margin: 4px 0 0;
+  color: var(--gh-success);
+  font-weight: 600;
+}
+
+.crop-detail {
+  margin-top: 2px;
+  border: 1px solid var(--gh-border);
+  border-radius: 12px;
+  background: #fffdec;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.crop-detail h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.crop-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.crop-field {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.crop-field input {
+  width: 92px;
+  max-width: 92px;
+  justify-self: start;
+}
+
+.crop-field label {
+  margin: 0;
+}
+
+.range-error {
+  margin: 0;
+}
+
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 80;
+}
+
+.confirm-modal-content {
+  width: min(440px, 100%);
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.confirm-modal-content h2 {
+  margin: 0 0 8px;
+}
+
+.confirm-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-actions button {
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-actions .secondary {
+  border: 1px solid var(--gh-border);
+  background: #f9fcf8;
+}
+
+.confirm-actions .primary {
+  border: 1px solid #2ea90d;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #36d30b;
+}
+
+.planting-card {
+  display: grid;
+  gap: 18px;
+}
+
+.planting-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.planting-grid > div {
+  display: grid;
+  gap: 6px;
+}
+
+.planting-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.planting-list {
+  border-top: 1px solid var(--gh-border);
+  padding-top: 12px;
+}
+
+.planting-list-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.planting-list-header h2 {
+  margin: 0;
+  margin-right: auto;
+}
+
+.planting-filter-label {
+  font-weight: 600;
+}
+
+.planting-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.planting-table th,
+.planting-table td {
+  border-bottom: 1px solid var(--gh-border);
+  padding: 9px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.planting-table th {
+  color: var(--gh-text);
+  font-weight: 700;
+  background: #f7fbf6;
+}
+
+.planting-table-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.sensor-catalog-card {
+  width: min(980px, 100%);
+}
+
+.sensor-catalog-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sensor-catalog-table th,
+.sensor-catalog-table td {
+  border-bottom: 1px solid var(--gh-border);
+  padding: 10px;
+  text-align: left;
+}
+
+.sensor-catalog-table th {
+  background: #f5faf4;
+}
+
+.sensor-catalog-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sensor-catalog-note {
+  margin-bottom: 12px;
+}
+
+.sensor-catalog-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sensor-unit-input {
+  width: min(180px, 100%);
+  border: 1px solid var(--gh-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  background: #fbfefb;
+}
+
+.sensor-save-button {
+  margin-top: 0;
+  padding: 9px 12px;
+}
+
+@media (max-width: 700px) {
+  .management-content {
+    padding: 14px 10px 24px;
+  }
+
+  .management-card {
+    padding: 18px;
+  }
+
+  .session-email {
+    font-size: 0.92rem;
+  }
+
+  .crop-row {
+    grid-template-columns: 1fr;
+  }
+
+  .home-greenhouse-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .crop-field {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .planting-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .planting-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

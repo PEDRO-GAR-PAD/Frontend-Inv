@@ -1,0 +1,427 @@
+.simulation-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.simulation-topbar {
+  justify-content: space-between;
+}
+
+.simulation-topbar-back {
+  border: none;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: #8f959b;
+}
+
+.simulation-topbar-email {
+  margin: 0;
+}
+
+.simulation-card h1 {
+  margin: 0;
+}
+
+.simulation-card select {
+  border: 1px solid #c9d1d9;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+.simulation-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.simulation-actions-end {
+  justify-content: flex-end;
+}
+
+.simulation-btn {
+  border: none;
+  border-radius: 10px;
+  min-height: 40px;
+  min-width: 170px;
+  padding: 0 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.simulation-btn-start {
+  background: #4ebc1b;
+}
+
+.simulation-btn-start:disabled {
+  opacity: 0.75;
+}
+
+.simulation-btn-back {
+  background: #8f959b;
+}
+
+.simulation-toggle-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.simulation-dashboard-card {
+  gap: 1rem;
+}
+
+.simulation-dashboard-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.2rem;
+  padding: 0.9rem;
+  border: 1px solid #d5e8d2;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fff5 0%, #f5fbf4 100%);
+}
+
+.simulation-dashboard-meta p {
+  margin: 0;
+}
+
+.dashboard-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "humidity temperature"
+    "co2 co2"
+    "light light";
+  gap: 1rem;
+}
+
+.dashboard-chart-card {
+  border: 1px solid #d6e5d2;
+  border-radius: 14px;
+  padding: 0.9rem;
+  box-shadow: 0 8px 18px rgba(44, 71, 41, 0.08);
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+  min-height: 260px;
+}
+
+.chart-humidity {
+  grid-area: humidity;
+}
+
+.chart-temperature {
+  grid-area: temperature;
+}
+
+.chart-co2-long {
+  grid-area: co2;
+  min-height: 310px;
+}
+
+.chart-light {
+  grid-area: light;
+}
+
+.dashboard-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.dashboard-chart-header h2 {
+  margin: 0;
+  color: #1d2d1d;
+  font-size: 1.02rem;
+}
+
+.dashboard-chart-header p {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.trend-up {
+  color: #13844f;
+}
+
+.trend-down {
+  color: #ba4814;
+}
+
+.dashboard-chart-value {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #182618;
+}
+
+.dashboard-chart-value span {
+  margin-left: 0.32rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #4e5f4e;
+}
+
+.dashboard-chart-svg {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.dashboard-chart-svg-long {
+  height: 170px;
+}
+
+.humidity-pie-wrap {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem 0;
+}
+
+.humidity-pie {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(20, 65, 40, 0.08), 0 8px 20px rgba(26, 96, 62, 0.17);
+}
+
+.humidity-pie-inner {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.2rem;
+}
+
+.humidity-pie-inner strong {
+  font-size: 1.5rem;
+  color: #1a6f4d;
+}
+
+.humidity-pie-inner span {
+  font-size: 0.8rem;
+  color: #4d5e4d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.thermometer-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 0.85rem;
+  padding-top: 0.2rem;
+}
+
+.thermometer-stem {
+  width: 34px;
+  height: 136px;
+  border-radius: 20px;
+  border: 3px solid #e9ab92;
+  background: linear-gradient(180deg, #fff9f7 0%, #ffe2d6 100%);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.thermometer-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #ff8756 0%, #f2602f 100%);
+  transition: height 0.35s ease;
+}
+
+.light-widget {
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
+}
+
+.light-sun {
+  position: relative;
+  width: 154px;
+  height: 154px;
+  display: grid;
+  place-items: center;
+}
+
+.light-sun-rays {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 212, 82, 0.85) 0deg 9deg, transparent 9deg 21deg);
+  filter: blur(0.2px);
+}
+
+.light-sun-core {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 3px solid #f0ca6d;
+  background: #fff6db;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.light-sun-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #ffe16e 0%, #dfac06 100%);
+  transition: height 0.35s ease;
+}
+
+.light-sun-icon {
+  position: relative;
+  z-index: 1;
+  font-size: 2rem;
+}
+
+.dashboard-chart-bars {
+  height: 44px;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.38rem;
+}
+
+.dashboard-chart-bars span {
+  border-radius: 8px 8px 4px 4px;
+  opacity: 0.86;
+}
+
+.simulation-actuators-page {
+  align-items: flex-start;
+}
+
+.actuators-card {
+  max-width: 760px;
+}
+
+.actuator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.actuator-item {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+}
+
+.actuator-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid #3e3e3e;
+  display: grid;
+  place-items: center;
+}
+
+.actuator-circle.inactive {
+  background: #8c8f94;
+}
+
+.actuator-circle.active {
+  background: #4ebc1b;
+}
+
+.actuator-inner-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 3px solid #d8d8d8;
+}
+
+.actuator-label {
+  margin: 0;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.sim-toggle {
+  border-radius: 10px;
+  border: none;
+  min-height: 42px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.sim-toggle.inactive {
+  background: #8c98a4;
+}
+
+.sim-toggle.active {
+  background: #4ebc1b;
+}
+
+.simulation-menu {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.simulation-menu button {
+  border: 1px solid #c9d1d9;
+  border-radius: 10px;
+  min-height: 40px;
+  background: #fff;
+}
+
+.simulation-menu .exit-button {
+  margin-top: 0.5rem;
+  border-color: #ff0000;
+  color: #ff0000;
+}
+
+@media (max-width: 640px) {
+  .simulation-btn {
+    width: 100%;
+  }
+
+  .simulation-topbar {
+    gap: 0.6rem;
+  }
+
+  .simulation-topbar-email {
+    max-width: min(58vw, 210px);
+  }
+
+  .simulation-dashboard-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-chart-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "humidity"
+      "temperature"
+      "co2"
+      "light";
+  }
+
+  .chart-co2-long {
+    min-height: 260px;
+  }
+
+  .actuator-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+}

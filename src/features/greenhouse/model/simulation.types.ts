@@ -1,0 +1,44 @@
+export type PantallaEntradaSimulacion = "START_SIMULATOR" | "ACTUATORS" | "EMPTY";
+
+export interface VistaInvernaderoSimulacion {
+  idInvernadero: string;
+  name: string;
+  location: string;
+  estadoInvernadero: "PRODUCCION" | "INACTIVO";
+  sensores: string[];
+  actuadores: string[];
+}
+
+export interface OpcionCultivoSeleccionable {
+  idCultivo: string;
+  name: string;
+  estadoCultivo: "ACTIVO" | "INACTIVO";
+}
+
+export interface RespuestaEntradaSimulacion {
+  pantallaEntrada: PantallaEntradaSimulacion;
+  invernadero: VistaInvernaderoSimulacion | null;
+}
+
+export interface ReferenciaSesionSimulacion {
+  idSesion: string;
+  idInvernadero: string;
+  idCultivo: string;
+  nombresSensor?: string[];
+  nombresActuador?: string[];
+  guardadoEn?: string;
+}
+
+export interface EstadoActuadorSimulacion {
+  IdActuador: string;
+  label: string;
+  activo: boolean;
+  actualizadoEn: string;
+}
+
+export interface EstadoEventoClimaticoSimulacion {
+  IdEvento: string;
+  label: string;
+  activo: boolean;
+  actualizadoEn: string;
+}

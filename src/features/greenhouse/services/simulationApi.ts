@@ -17,7 +17,17 @@ interface ApiErrorPayload {
 
 function buildAuthHeaders(): Record<string, string> {
   const session = getUserSession();
-  return session.idUsuario ? { "X-User-Id": session.idUsuario } : {};
+  const headers: Record<string, string> = {};
+
+  if (session.idUsuario) {
+    headers["X-User-Id"] = session.idUsuario;
+  }
+
+  if (session.token) {
+    headers.Authorization = `Bearer ${session.token}`;
+  }
+
+  return headers;
 }
 
 export async function parseSimulationApiError(response: Response): Promise<string> {

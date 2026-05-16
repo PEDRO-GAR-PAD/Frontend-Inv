@@ -1,4 +1,5 @@
 import type { ActualizarUnidadSensorInput, CatalogoSensorItem } from "../model/sensor-catalog.types";
+import { getUserSession } from "../model/session.store";
 
 const API_BASE_URL =
   (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
@@ -6,6 +7,11 @@ const API_BASE_URL =
 
 interface ApiErrorPayload {
   message?: string;
+}
+
+function buildAuthHeaders(): Record<string, string> {
+  const session = getUserSession();
+  return session.token ? { Authorization: `Bearer ${session.token}` } : {};
 }
 
 export class ErrorCatalogoSensor extends Error {
@@ -28,6 +34,7 @@ async function parseApiError(response: Response): Promise<string> {
 
 export async function listSensorCatalog(): Promise<CatalogoSensorItem[]> {
   const response = await fetch(`${API_BASE_URL}/api/sensors/catalog`, {
+    headers: buildAuthHeaders(),
     cache: "no-store"
   });
 
@@ -47,6 +54,7 @@ export async function updateSensorUnit(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      ...buildAuthHeaders(),
       "X-User-Role": userRole
     },
     body: JSON.stringify(payload)

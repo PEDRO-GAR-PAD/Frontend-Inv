@@ -76,13 +76,15 @@ export function GreenhousePage() {
         idUsuario: session.idUsuario,
         nombre: form.nombre,
         ubicacion: form.ubicacion,
-        estado: form.estado
+        estado: form.estado,
+        sensores: form.sensores,
+        actuadores: form.actuadores
       });
 
       setSuccessMessage("Invernadero creado correctamente.");
       setForm({ nombre: "", ubicacion: "", estado: ESTADO_POR_DEFECTO, sensores: [], actuadores: [] });
-      setErrors({});
       setHasUnsavedChanges(false);
+      setErrors({});
     } catch (error) {
       setSuccessMessage("");
       setApiError(error instanceof Error ? error.message : "No se pudo crear el invernadero");

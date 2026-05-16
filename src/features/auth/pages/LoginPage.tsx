@@ -15,7 +15,11 @@ export function LoginPage() {
     setApiError("");
     try {
       const usuario = await loginUser(credentials);
-      saveUserSession({ idUsuario: usuario.id_usuario, correo: usuario.correo });
+      saveUserSession({
+        idUsuario: usuario.id_usuario || usuario.idUsuario || "",
+        correo: usuario.correo || credentials.correo,
+        token: usuario.token
+      });
       navigate("/inicio");
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "No se pudo iniciar sesion");

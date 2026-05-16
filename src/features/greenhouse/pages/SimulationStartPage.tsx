@@ -4,9 +4,13 @@ import type { OpcionCultivoSeleccionable, RespuestaEntradaSimulacion } from "../
 import { getUserSession } from "../model/session.store";
 import { clearSimulationSession, getSimulationSession, saveSimulationSession } from "../model/simulationSession.store";
 import { listCropsByUser } from "../services/cropApi";
-import { listGreenhousesByUser, updateGreenhouse } from "../services/greenhouseApi";
-import { createPlanting, listPlantingsByUser, updatePlanting } from "../services/plantingApi";
-import { getSimulationCrops, getSimulationEntry, startSimulationSession } from "../services/simulationApi";
+import {
+  listGreenhouseActuatorsById,
+  listGreenhouseSensorsById,
+  listGreenhousesByUser,
+  updateGreenhouse
+} from "../services/greenhouseApi";
+import { startSimulationSession } from "../services/simulationApi";
 import "../styles/simulation.css";
 
 function toLocalDateTimeApiValue(date: Date): string {
@@ -19,73 +23,14 @@ function toLocalDateTimeApiValue(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
-async function ensureActivePlanting(params: {
-  idUsuario: string;
-  idInvernadero: string;
-  idCultivo: string;
-  fechaPlantado: string;
-}): Promise<void> {
-  const allItems = await listPlantingsByUser(params.idUsuario, "TODAS");
-
-  const alreadyActive = allItems.some(
-    (item) =>
-      item.idInvernadero === params.idInvernadero &&
-      item.idCultivo === params.idCultivo &&
-      item.estado === "ACTIVA"
-  );
-
-  if (alreadyActive) {
-    return;
-  }
-
-  const inactiveMatch = allItems.find(
-    (item) =>
-      item.idInvernadero === params.idInvernadero &&
-      item.idCultivo === params.idCultivo &&
-      item.estado === "INACTIVA"
-  );
-
-  if (inactiveMatch) {
-    await updatePlanting(inactiveMatch.idPlantacion, {
-      idUsuario: params.idUsuario,
-      idInvernadero: params.idInvernadero,
-      idCultivo: params.idCultivo,
-      fechaPlantado: params.fechaPlantado,
-      fechaFinalizacion: null,
-      estado: "ACTIVA"
-    });
-    return;
-  }
-
-  await createPlanting({
-    idUsuario: params.idUsuario,
-    idInvernadero: params.idInvernadero,
-    idCultivo: params.idCultivo,
-    fechaPlantado: params.fechaPlantado,
-    fechaFinalizacion: null,
-    estado: "ACTIVA"
-  });
-}
-
 async function loadSelectableCrops(idUsuario: string): Promise<OpcionCultivoSeleccionable[]> {
-  try {
-    return await getSimulationCrops();
-  } catch {
-    const [cropData, activePlantings] = await Promise.all([
-      listCropsByUser(idUsuario),
-      listPlantingsByUser(idUsuario, "ACTIVA")
-    ]);
+  const cropData = await listCropsByUser(idUsuario);
 
-    const activeCropIds = new Set(activePlantings.map((item) => item.idCultivo));
-
-    return cropData
-      .filter((item) => !activeCropIds.has(item.idCultivo))
-      .map((item) => ({
-        idCultivo: item.idCultivo,
-        name: item.nombre,
-        estadoCultivo: "INACTIVO" as const
-      }));
-  }
+  return cropData.map((item) => ({
+    idCultivo: item.idCultivo,
+    name: item.nombre,
+    estadoCultivo: "INACTIVO" as const
+  }));
 }
 
 function readSessionFromEntry(entryData: RespuestaEntradaSimulacion): { idSesion: string; idInvernadero: string; idCultivo: string } | null {
@@ -123,8 +68,6 @@ export function SimulationStartPage() {
       setLoading(true);
       setError("");
       const greenhouseId = searchParams.get("greenhouseId") ?? "";
-      const greenhouseName = searchParams.get("greenhouseName") ?? "Invernadero";
-      const greenhouseLocation = searchParams.get("greenhouseLocation") ?? "Sin ubicacion";
       const sensorNamesFromQuery = (searchParams.get("sensorNames") ?? "")
         .split(",")
         .map((sensor) => sensor.trim())
@@ -134,79 +77,43 @@ export function SimulationStartPage() {
         .map((actuator) => actuator.trim())
         .filter(Boolean);
 
+      setEntry({
+        pantallaEntrada: "START_SIMULATOR",
+        invernadero: {
+          idInvernadero: greenhouseId,
+          name: searchParams.get("greenhouseName") ?? "Invernadero",
+          location: searchParams.get("greenhouseLocation") ?? "Sin ubicacion",
+          estadoInvernadero: "INACTIVO",
+          sensores: sensorNamesFromQuery,
+          actuadores: actuatorNamesFromQuery
+        }
+      });
+
       if (!greenhouseId) {
         navigate("/inicio", { replace: true });
         return;
       }
 
-      const currentSession = getSimulationSession();
-      if (currentSession && currentSession.idInvernadero !== greenhouseId) {
-        navigate("/simulacion/actuadores", { replace: true });
-        return;
-      }
-
-      if (currentSession && currentSession.idInvernadero === greenhouseId) {
-        navigate("/simulacion/actuadores", { replace: true });
-        return;
-      }
-
       try {
-        const entryData = await getSimulationEntry(greenhouseId);
+        const [dbSensors, dbActuators] = await Promise.all([
+          listGreenhouseSensorsById(greenhouseId),
+          listGreenhouseActuatorsById(greenhouseId)
+        ]);
 
-        if (entryData.pantallaEntrada === "EMPTY") {
-          navigate("/simulacion/vacio", { replace: true });
-          return;
-        }
-
-        if (entryData.pantallaEntrada === "ACTUATORS") {
-          const entrySession = readSessionFromEntry(entryData);
-          if (entrySession) {
-            saveSimulationSession({
-              ...entrySession,
-              nombresSensor: sensorNamesFromQuery,
-              nombresActuador: actuatorNamesFromQuery
-            });
-          } else if (session.idUsuario) {
-            try {
-              const activePlantings = await listPlantingsByUser(session.idUsuario, "ACTIVA");
-              const activePlanting = activePlantings.find((item) => item.idInvernadero === greenhouseId);
-              if (activePlanting) {
-                const resumedSession = await startSimulationSession({
-                  idInvernadero: greenhouseId,
-                  idCultivo: activePlanting.idCultivo
-                });
-
-                saveSimulationSession({
-                  ...resumedSession,
-                  nombresSensor: sensorNamesFromQuery,
-                  nombresActuador: actuatorNamesFromQuery
-                });
+        setEntry((current) =>
+          current
+            ? {
+                ...current,
+                invernadero: current.invernadero
+                  ? {
+                      ...current.invernadero,
+                      sensores: dbSensors.length > 0 ? dbSensors : current.invernadero.sensores,
+                      actuadores: dbActuators.length > 0 ? dbActuators : current.invernadero.actuadores
+                    }
+                  : current.invernadero
               }
-            } catch {
-              // no-op: fallback navigation below preserves existing behavior
-            }
-          }
-
-          navigate("/simulacion/actuadores", { replace: true });
-          return;
-        }
-
-        const entryWithSensors = entryData.invernadero
-          ? {
-              ...entryData,
-              invernadero: {
-                ...entryData.invernadero,
-                sensores: entryData.invernadero.sensores.length > 0
-                  ? entryData.invernadero.sensores
-                  : sensorNamesFromQuery,
-                actuadores: entryData.invernadero.actuadores.length > 0
-                  ? entryData.invernadero.actuadores
-                  : actuatorNamesFromQuery
-              }
-            }
-          : entryData;
-
-        setEntry(entryWithSensors);
+            : current
+        );
 
         if (!session.idUsuario) {
           setError("Debes iniciar sesion para cargar cosechas.");
@@ -215,31 +122,9 @@ export function SimulationStartPage() {
         }
 
         setCrops(await loadSelectableCrops(session.idUsuario));
-      } catch (loadError) {
-        // Keep simulation entry visible with real greenhouse info when API data is partially unavailable.
-        setEntry({
-          pantallaEntrada: "START_SIMULATOR",
-          invernadero: {
-              idInvernadero: greenhouseId,
-              name: greenhouseName,
-              location: greenhouseLocation,
-              estadoInvernadero: "INACTIVO",
-              sensores: sensorNamesFromQuery,
-              actuadores: actuatorNamesFromQuery.length > 0 ? actuatorNamesFromQuery : ["Ventilador", "Riego", "Luz", "Extractores de Aire", "Malla"]
-            }
-        });
-
-        if (session.idUsuario) {
-          try {
-            setCrops(await loadSelectableCrops(session.idUsuario));
-          } catch {
-            setCrops([]);
-          }
-        } else {
-          setCrops([]);
-        }
-
-        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar la simulacion");
+      } catch {
+        setCrops([]);
+        setError("No se pudo cargar la lista de cultivos.");
       } finally {
         setLoading(false);
       }
@@ -289,22 +174,6 @@ export function SimulationStartPage() {
       });
     } catch (statusError) {
       setError(statusError instanceof Error ? statusError.message : "No se pudo actualizar el estado del invernadero");
-      return;
-    }
-
-    try {
-      await ensureActivePlanting({
-        idUsuario: session.idUsuario,
-        idInvernadero: entry.invernadero.idInvernadero,
-        idCultivo: selectedCropId,
-        fechaPlantado: toLocalDateTimeApiValue(new Date())
-      });
-    } catch (plantingError) {
-      setError(
-        plantingError instanceof Error
-          ? `No se pudo registrar la plantacion automaticamente: ${plantingError.message}`
-          : "No se pudo registrar la plantacion automaticamente"
-      );
       return;
     }
 

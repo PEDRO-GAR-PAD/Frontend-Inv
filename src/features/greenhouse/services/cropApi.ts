@@ -29,6 +29,46 @@ interface ApiErrorPayload {
   message?: string;
 }
 
+interface BackendUsuarioRef {
+  idUsuario?: number | string;
+  correo?: string;
+}
+
+interface BackendCultivo {
+  idCultivo?: number | string;
+  usuario?: BackendUsuarioRef | null;
+  nombre?: string;
+  temperaturaMin?: number | null;
+  temperaturaMax?: number | null;
+  humedadMin?: number | null;
+  humedadMax?: number | null;
+  luzMin?: number | null;
+  luzMax?: number | null;
+}
+
+function buildAuthHeaders(): Record<string, string> {
+  return {};
+}
+
+function toUsuarioIdValue(idUsuario: string): number | string {
+  const numericId = Number(idUsuario);
+  return Number.isNaN(numericId) ? idUsuario : numericId;
+}
+
+function mapBackendCultivo(cultivo: BackendCultivo): CultivoApiRespuesta {
+  return {
+    idCultivo: String(cultivo.idCultivo ?? ""),
+    idUsuario: String(cultivo.usuario?.idUsuario ?? ""),
+    nombre: cultivo.nombre ?? "",
+    temperaturaMinima: Number(cultivo.temperaturaMin ?? 0),
+    temperaturaMaxima: Number(cultivo.temperaturaMax ?? 0),
+    humedadMinima: Number(cultivo.humedadMin ?? 0),
+    humedadMaxima: Number(cultivo.humedadMax ?? 0),
+    luzMinima: Number(cultivo.luzMin ?? 0),
+    luzMaxima: Number(cultivo.luzMax ?? 0)
+  };
+}
+
 async function parseApiError(response: Response): Promise<string> {
   try {
     const payload = (await response.json()) as ApiErrorPayload;
@@ -39,10 +79,19 @@ async function parseApiError(response: Response): Promise<string> {
 }
 
 export async function createCrop(payload: CrearCultivoPayload): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/crops`, {
+  const response = await fetch(`${API_BASE_URL}/api/cultivos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      usuario: { idUsuario: toUsuarioIdValue(payload.idUsuario) },
+      nombre: payload.nombre,
+      temperaturaMin: payload.temperaturaMinima,
+      temperaturaMax: payload.temperaturaMaxima,
+      humedadMin: payload.humedadMinima,
+      humedadMax: payload.humedadMaxima,
+      luzMin: payload.luzMinima,
+      luzMax: payload.luzMaxima
+    })
   });
 
   if (!response.ok) {
@@ -51,7 +100,8 @@ export async function createCrop(payload: CrearCultivoPayload): Promise<void> {
 }
 
 export async function listCropsByUser(idUsuario: string): Promise<CultivoApiRespuesta[]> {
-  const response = await fetch(`${API_BASE_URL}/api/crops?userId=${encodeURIComponent(idUsuario)}`, {
+  const response = await fetch(`${API_BASE_URL}/api/cultivos`, {
+    headers: buildAuthHeaders(),
     cache: "no-store"
   });
 
@@ -59,5 +109,6 @@ export async function listCropsByUser(idUsuario: string): Promise<CultivoApiResp
     throw new Error(await parseApiError(response));
   }
 
-  return (await response.json()) as CultivoApiRespuesta[];
+  const items = (await response.json()) as BackendCultivo[];
+  return items.map(mapBackendCultivo).filter((item) => item.idUsuario === idUsuario);
 }

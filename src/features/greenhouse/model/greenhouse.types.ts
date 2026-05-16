@@ -1,6 +1,7 @@
 export interface SesionUsuario {
   idUsuario: string;
   correo: string;
+  token?: string;
 }
 
 export type EstadoInvernadero = "PRODUCCION" | "INACTIVO";

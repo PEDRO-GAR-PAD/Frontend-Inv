@@ -3,6 +3,7 @@ import type {
   FiltroEstadoPlantacion,
   RespuestaPlantacionApi
 } from "../model/planting.types";
+import { getUserSession } from "../model/session.store";
 
 const API_BASE_URL =
   (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
@@ -10,6 +11,11 @@ const API_BASE_URL =
 
 interface ApiErrorPayload {
   message?: string;
+}
+
+function buildAuthHeaders(): Record<string, string> {
+  const session = getUserSession();
+  return session.token ? { Authorization: `Bearer ${session.token}` } : {};
 }
 
 async function parseApiError(response: Response): Promise<string> {
@@ -27,6 +33,7 @@ export async function listPlantingsByUser(
 ): Promise<RespuestaPlantacionApi[]> {
   const query = new URLSearchParams({ userId: idUsuario, status: estado === "TODAS" ? "" : estado });
   const response = await fetch(`${API_BASE_URL}/api/plantings?${query.toString()}`, {
+    headers: buildAuthHeaders(),
     cache: "no-store"
   });
 
@@ -40,7 +47,7 @@ export async function listPlantingsByUser(
 export async function createPlanting(payload: CargaUtilPlantacionApi): Promise<RespuestaPlantacionApi> {
   const response = await fetch(`${API_BASE_URL}/api/plantings`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
     body: JSON.stringify(payload)
   });
 
@@ -54,7 +61,7 @@ export async function createPlanting(payload: CargaUtilPlantacionApi): Promise<R
 export async function updatePlanting(id: string, payload: CargaUtilPlantacionApi): Promise<RespuestaPlantacionApi> {
   const response = await fetch(`${API_BASE_URL}/api/plantings/${encodeURIComponent(id)}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
     body: JSON.stringify(payload)
   });
 
@@ -67,7 +74,8 @@ export async function updatePlanting(id: string, payload: CargaUtilPlantacionApi
 
 export async function deletePlanting(id: string): Promise<RespuestaPlantacionApi> {
   const response = await fetch(`${API_BASE_URL}/api/plantings/${encodeURIComponent(id)}`, {
-    method: "DELETE"
+    method: "DELETE",
+    headers: buildAuthHeaders()
   });
 
   if (!response.ok) {

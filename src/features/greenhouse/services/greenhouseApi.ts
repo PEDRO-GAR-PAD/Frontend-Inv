@@ -51,6 +51,8 @@ interface BackendInvernadero {
   nombre?: string;
   ubicacion?: string | null;
   estado?: string | null;
+  nombresSensor?: string[];
+  nombresActuador?: string[];
 }
 
 interface BackendCatalogRef {
@@ -88,8 +90,8 @@ function mapBackendInvernadero(invernadero: BackendInvernadero): InvernaderoApiR
     nombre: invernadero.nombre ?? "",
     ubicacion: invernadero.ubicacion ?? null,
     estado: invernadero.estado === "PRODUCCION" ? "PRODUCCION" : "INACTIVO",
-    nombresSensor: [],
-    nombresActuador: []
+    nombresSensor: Array.isArray(invernadero.nombresSensor) ? invernadero.nombresSensor : [],
+    nombresActuador: Array.isArray(invernadero.nombresActuador) ? invernadero.nombresActuador : []
   };
 }
 
@@ -165,7 +167,7 @@ export async function createGreenhouse(payload: CrearInvernaderoPayload): Promis
 }
 
 export async function listGreenhousesByUser(idUsuario: string): Promise<InvernaderoApiRespuesta[]> {
-  const response = await fetch(`${API_BASE_URL}/api/invernaderos`, {
+  const response = await fetch(`${API_BASE_URL}/api/invernaderos?userId=${encodeURIComponent(idUsuario)}`, {
     cache: "no-store"
   });
 
@@ -174,7 +176,7 @@ export async function listGreenhousesByUser(idUsuario: string): Promise<Invernad
   }
 
   const items = (await response.json()) as BackendInvernadero[];
-  return items.map(mapBackendInvernadero).filter((item) => item.idUsuario === idUsuario);
+  return items.map(mapBackendInvernadero);
 }
 
 export async function listGreenhousesByUserPaged(
@@ -182,7 +184,7 @@ export async function listGreenhousesByUserPaged(
   page: number,
   size: number
 ): Promise<RespuestaPaginaInvernaderos> {
-  const response = await fetch(`${API_BASE_URL}/api/invernaderos`, {
+  const response = await fetch(`${API_BASE_URL}/api/invernaderos?userId=${encodeURIComponent(idUsuario)}`, {
     cache: "no-store"
   });
 
@@ -190,16 +192,14 @@ export async function listGreenhousesByUserPaged(
     throw new Error(await parseApiError(response));
   }
 
-  const items = ((await response.json()) as BackendInvernadero[])
-    .map(mapBackendInvernadero)
-    .filter((item) => item.idUsuario === idUsuario);
-
+  const items = (await response.json()) as BackendInvernadero[];
+  const mappedItems = items.map(mapBackendInvernadero);
   const start = Math.max(0, page) * Math.max(1, size);
-  const pagedItems = items.slice(start, start + Math.max(1, size));
+  const pagedItems = mappedItems.slice(start, start + Math.max(1, size));
 
   return {
     items: pagedItems,
-    total: items.length
+    total: mappedItems.length
   };
 }
 

@@ -8,6 +8,7 @@ import {
   listGreenhouseActuatorsById,
   listGreenhouseSensorsById,
   listGreenhousesByUser,
+  resolveCurrentUserId,
   updateGreenhouse
 } from "../services/greenhouseApi";
 import { startSimulationSession } from "../services/simulationApi";
@@ -60,6 +61,7 @@ export function SimulationStartPage() {
   const [entry, setEntry] = useState<RespuestaEntradaSimulacion | null>(null);
   const [crops, setCrops] = useState<OpcionCultivoSeleccionable[]>([]);
   const [selectedCropId, setSelectedCropId] = useState("");
+  const [resolvedUserId, setResolvedUserId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -95,10 +97,13 @@ export function SimulationStartPage() {
       }
 
       try {
-        const [dbSensors, dbActuators] = await Promise.all([
+        const [dbSensorsResult, dbActuatorsResult] = await Promise.allSettled([
           listGreenhouseSensorsById(greenhouseId),
           listGreenhouseActuatorsById(greenhouseId)
         ]);
+
+        const dbSensors = dbSensorsResult.status === "fulfilled" ? dbSensorsResult.value : [];
+        const dbActuators = dbActuatorsResult.status === "fulfilled" ? dbActuatorsResult.value : [];
 
         setEntry((current) =>
           current
@@ -115,16 +120,21 @@ export function SimulationStartPage() {
             : current
         );
 
-        if (!session.idUsuario) {
-          setError("Debes iniciar sesion para cargar cosechas.");
+        const userId = session.idUsuario || (session.token && session.correo ? await resolveCurrentUserId(session.correo, session.token) : "");
+        setResolvedUserId(userId);
+
+        if (!userId) {
           setCrops([]);
+          setError("Debes iniciar sesion para cargar cosechas.");
           return;
         }
 
-        setCrops(await loadSelectableCrops(session.idUsuario));
-      } catch {
-        setCrops([]);
-        setError("No se pudo cargar la lista de cultivos.");
+        try {
+          setCrops(await loadSelectableCrops(userId));
+        } catch {
+          setCrops([]);
+          setError("No se pudo cargar la lista de cultivos.");
+        }
       } finally {
         setLoading(false);
       }
@@ -140,7 +150,8 @@ export function SimulationStartPage() {
       return;
     }
 
-    if (!session.idUsuario) {
+    const currentUserId = session.idUsuario || resolvedUserId;
+    if (!currentUserId) {
       setError("Debes iniciar sesion para actualizar el estado del invernadero.");
       return;
     }
@@ -148,7 +159,7 @@ export function SimulationStartPage() {
     const activeSession = getSimulationSession();
     if (activeSession && activeSession.idInvernadero !== entry.invernadero.idInvernadero) {
       try {
-        const userGreenhouses = await listGreenhousesByUser(session.idUsuario);
+        const userGreenhouses = await listGreenhousesByUser(currentUserId);
         const sessionGreenhouseExists = userGreenhouses.some((item) => item.idInvernadero === activeSession.idInvernadero);
 
         if (!sessionGreenhouseExists) {
@@ -167,7 +178,7 @@ export function SimulationStartPage() {
     try {
       setError("");
       await updateGreenhouse(entry.invernadero.idInvernadero, {
-        idUsuario: session.idUsuario,
+        idUsuario: session.idUsuario || resolvedUserId,
         nombre: entry.invernadero.name,
         ubicacion: entry.invernadero.location,
         estado: "PRODUCCION"

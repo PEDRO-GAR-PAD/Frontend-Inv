@@ -1,3 +1,5 @@
+import { getUserSession } from "../model/session.store";
+
 const API_BASE_URL =
   (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_API_BASE_URL ??
   "http://localhost:8080";
@@ -36,6 +38,7 @@ interface BackendUsuarioRef {
 
 interface BackendCultivo {
   idCultivo?: number | string;
+  idUsuario?: number | string;
   usuario?: BackendUsuarioRef | null;
   nombre?: string;
   temperaturaMin?: number | null;
@@ -47,7 +50,18 @@ interface BackendCultivo {
 }
 
 function buildAuthHeaders(): Record<string, string> {
-  return {};
+  const session = getUserSession();
+  const headers: Record<string, string> = {};
+
+  if (session.idUsuario) {
+    headers["X-User-Id"] = session.idUsuario;
+  }
+
+  if (session.token) {
+    headers.Authorization = `Bearer ${session.token}`;
+  }
+
+  return headers;
 }
 
 function toUsuarioIdValue(idUsuario: string): number | string {
@@ -56,9 +70,11 @@ function toUsuarioIdValue(idUsuario: string): number | string {
 }
 
 function mapBackendCultivo(cultivo: BackendCultivo): CultivoApiRespuesta {
+  const idUsuario = cultivo.idUsuario ?? cultivo.usuario?.idUsuario ?? "";
+
   return {
     idCultivo: String(cultivo.idCultivo ?? ""),
-    idUsuario: String(cultivo.usuario?.idUsuario ?? ""),
+    idUsuario: String(idUsuario),
     nombre: cultivo.nombre ?? "",
     temperaturaMinima: Number(cultivo.temperaturaMin ?? 0),
     temperaturaMaxima: Number(cultivo.temperaturaMax ?? 0),
@@ -81,7 +97,8 @@ async function parseApiError(response: Response): Promise<string> {
 export async function createCrop(payload: CrearCultivoPayload): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/cultivos`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+    credentials: "include",
     body: JSON.stringify({
       usuario: { idUsuario: toUsuarioIdValue(payload.idUsuario) },
       nombre: payload.nombre,
@@ -100,9 +117,17 @@ export async function createCrop(payload: CrearCultivoPayload): Promise<void> {
 }
 
 export async function listCropsByUser(idUsuario: string): Promise<CultivoApiRespuesta[]> {
-  const response = await fetch(`${API_BASE_URL}/api/cultivos`, {
+  const sessionUserId = getUserSession().idUsuario.trim();
+  const effectiveUserId = idUsuario.trim() || sessionUserId;
+
+  if (!effectiveUserId) {
+    return [];
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/cultivos?userId=${encodeURIComponent(effectiveUserId)}`, {
     headers: buildAuthHeaders(),
-    cache: "no-store"
+    cache: "no-store",
+    credentials: "include"
   });
 
   if (!response.ok) {
@@ -110,5 +135,5 @@ export async function listCropsByUser(idUsuario: string): Promise<CultivoApiResp
   }
 
   const items = (await response.json()) as BackendCultivo[];
-  return items.map(mapBackendCultivo).filter((item) => item.idUsuario === idUsuario);
+  return items.map(mapBackendCultivo).filter((item) => item.idUsuario === effectiveUserId);
 }

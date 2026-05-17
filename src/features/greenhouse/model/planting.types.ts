@@ -1,5 +1,5 @@
-export type EstadoPlantacion = "ACTIVA" | "INACTIVA";
-export type FiltroEstadoPlantacion = "ACTIVA" | "INACTIVA" | "TODAS";
+export type EstadoPlantacion = "ACTIVA" | "INACTIVA" | "FINALIZADA";
+export type FiltroEstadoPlantacion = "ACTIVA" | "INACTIVA" | "FINALIZADA" | "TODAS";
 
 export interface FormularioPlantacion {
   idInvernadero: string;

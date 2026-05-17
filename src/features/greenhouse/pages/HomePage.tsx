@@ -134,6 +134,7 @@ export function HomePage() {
                           greenhouseId: greenhouse.idInvernadero,
                           greenhouseName: greenhouse.nombre,
                           greenhouseLocation: greenhouse.ubicacion || "",
+                          greenhouseState: greenhouse.estado,
                           sensorNames: (greenhouse.nombresSensor || []).join(","),
                           actuatorNames: (greenhouse.nombresActuador || []).join(",")
                         });

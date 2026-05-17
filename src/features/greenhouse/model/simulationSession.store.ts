@@ -44,6 +44,8 @@ export function getSimulationSession(): ReferenciaSesionSimulacion | null {
       idSesion: parsed.idSesion,
       idInvernadero: parsed.idInvernadero,
       idCultivo: parsed.idCultivo,
+      greenhouseName: parsed.greenhouseName,
+      cropName: parsed.cropName,
       nombresSensor: Array.isArray(parsed.nombresSensor) ? parsed.nombresSensor : undefined,
       nombresActuador: Array.isArray(parsed.nombresActuador) ? parsed.nombresActuador : undefined,
       guardadoEn: parsed.guardadoEn

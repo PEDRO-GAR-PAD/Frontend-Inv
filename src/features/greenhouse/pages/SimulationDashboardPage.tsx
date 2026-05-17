@@ -1,7 +1,10 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSimulationSession, clearSimulationSession } from "../model/simulationSession.store";
+import { updateGreenhouse } from "../services/greenhouseApi";
+import { finalizePlanting } from "../services/plantingApi";
 import { getSimulationDashboard, exitSimulationSession, type SimulationDashboardSummary } from "../services/simulationApi";
+import { getUserSession } from "../model/session.store";
 import "../styles/simulation.css";
 
 interface SerieMetricas {
@@ -85,8 +88,8 @@ export function SimulationDashboardPage() {
             sessionId: session.idSesion,
             activeActuatorCount: 0,
             activeClimateEventCount: 0,
-            greenhouseName: "Invernadero en simulacion",
-            selectedCropName: "Cosecha seleccionada",
+            greenhouseName: session.greenhouseName ?? "Invernadero en simulacion",
+            selectedCropName: session.cropName ?? "Cosecha seleccionada",
             lastUpdatedAt: new Date().toISOString()
           });
           setMensajeError("");
@@ -141,23 +144,39 @@ export function SimulationDashboardPage() {
               disabled={finalizando}
               onClick={async () => {
                 const session = getSimulationSession();
+                const userSession = getUserSession();
                 setErrorFinalizacion("");
                 if (!session) {
                   setErrorFinalizacion("No hay una simulacion activa para finalizar.");
                   return;
                 }
-                if (session.idSesion.startsWith("local-")) {
-                  setErrorFinalizacion("No se puede finalizar porque la simulacion no esta registrada en el servidor.");
+                if (!userSession.idUsuario) {
+                  setErrorFinalizacion("No se pudo identificar al usuario de la simulacion.");
                   return;
                 }
 
                 try {
                   setFinalizando(true);
-                  await exitSimulationSession(session.idSesion);
+                  await updateGreenhouse(session.idInvernadero, {
+                    idUsuario: userSession.idUsuario,
+                    nombre: resumen?.greenhouseName ?? "Invernadero",
+                    ubicacion: "",
+                    estado: "INACTIVO"
+                  });
+
+                  await finalizePlanting({
+                    idUsuario: userSession.idUsuario,
+                    idInvernadero: session.idInvernadero
+                  });
+
+                  if (!session.idSesion.startsWith("local-")) {
+                    await exitSimulationSession(session.idSesion);
+                  }
+
                   clearSimulationSession();
                   navigate("/inicio");
-                } catch {
-                  setErrorFinalizacion("No se pudo finalizar la simulacion. Intenta de nuevo.");
+                } catch (finishError) {
+                  setErrorFinalizacion(finishError instanceof Error ? finishError.message : "No se pudo finalizar la simulacion. Intenta de nuevo.");
                 } finally {
                   setFinalizando(false);
                 }
@@ -169,8 +188,8 @@ export function SimulationDashboardPage() {
         </div>
 
         <div className="simulation-dashboard-meta" aria-label="Resumen de simulacion">
-          <p><strong>Invernadero:</strong> {resumen?.greenhouseName ?? "-"}</p>
-          <p><strong>Cosecha:</strong> {resumen?.selectedCropName ?? "-"}</p>
+          <p><strong>Invernadero:</strong> {resumen?.greenhouseName ?? session?.greenhouseName ?? "-"}</p>
+          <p><strong>Cosecha:</strong> {resumen?.selectedCropName ?? session?.cropName ?? "-"}</p>
           <p><strong>Actuadores activos:</strong> {resumen?.activeActuatorCount ?? 0}</p>
           <p><strong>Eventos activos:</strong> {resumen?.activeClimateEventCount ?? 0}</p>
         </div>

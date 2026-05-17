@@ -24,6 +24,8 @@ export interface ReferenciaSesionSimulacion {
   idSesion: string;
   idInvernadero: string;
   idCultivo: string;
+  greenhouseName?: string;
+  cropName?: string;
   nombresSensor?: string[];
   nombresActuador?: string[];
   guardadoEn?: string;

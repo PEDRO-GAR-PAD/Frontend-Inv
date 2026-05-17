@@ -3,13 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { OpcionCultivoSeleccionable, RespuestaEntradaSimulacion } from "../model/simulation.types";
 import { getUserSession } from "../model/session.store";
 import { clearSimulationSession, getSimulationSession, saveSimulationSession } from "../model/simulationSession.store";
+import { createPlanting, deletePlanting, getActivePlantingByGreenhouse, listPlantingsByUser } from "../services/plantingApi";
 import { listCropsByUser } from "../services/cropApi";
 import {
+  updateGreenhouse,
   listGreenhouseActuatorsById,
   listGreenhouseSensorsById,
   listGreenhousesByUser,
   resolveCurrentUserId,
-  updateGreenhouse
 } from "../services/greenhouseApi";
 import { startSimulationSession } from "../services/simulationApi";
 import "../styles/simulation.css";
@@ -25,13 +26,19 @@ function toLocalDateTimeApiValue(date: Date): string {
 }
 
 async function loadSelectableCrops(idUsuario: string): Promise<OpcionCultivoSeleccionable[]> {
-  const cropData = await listCropsByUser(idUsuario);
+  const [cropData, activePlantings] = await Promise.all([
+    listCropsByUser(idUsuario),
+    listPlantingsByUser(idUsuario, "ACTIVA")
+  ]);
+  const activeCropIds = new Set(activePlantings.map((item) => item.idCultivo));
 
-  return cropData.map((item) => ({
-    idCultivo: item.idCultivo,
-    name: item.nombre,
-    estadoCultivo: "INACTIVO" as const
-  }));
+  return cropData
+    .filter((item) => !activeCropIds.has(item.idCultivo))
+    .map((item) => ({
+      idCultivo: item.idCultivo,
+      name: item.nombre,
+      estadoCultivo: "INACTIVO" as const
+    }));
 }
 
 function readSessionFromEntry(entryData: RespuestaEntradaSimulacion): { idSesion: string; idInvernadero: string; idCultivo: string } | null {
@@ -70,6 +77,8 @@ export function SimulationStartPage() {
       setLoading(true);
       setError("");
       const greenhouseId = searchParams.get("greenhouseId") ?? "";
+      const greenhouseState = searchParams.get("greenhouseState") ?? "INACTIVO";
+      const greenhouseNameFromQuery = searchParams.get("greenhouseName") ?? "Invernadero";
       const sensorNamesFromQuery = (searchParams.get("sensorNames") ?? "")
         .split(",")
         .map((sensor) => sensor.trim())
@@ -83,9 +92,9 @@ export function SimulationStartPage() {
         pantallaEntrada: "START_SIMULATOR",
         invernadero: {
           idInvernadero: greenhouseId,
-          name: searchParams.get("greenhouseName") ?? "Invernadero",
+          name: greenhouseNameFromQuery,
           location: searchParams.get("greenhouseLocation") ?? "Sin ubicacion",
-          estadoInvernadero: "INACTIVO",
+          estadoInvernadero: greenhouseState === "PRODUCCION" ? "PRODUCCION" : "INACTIVO",
           sensores: sensorNamesFromQuery,
           actuadores: actuatorNamesFromQuery
         }
@@ -120,6 +129,26 @@ export function SimulationStartPage() {
             : current
         );
 
+        if (greenhouseState === "PRODUCCION") {
+          try {
+            const activePlanting = await getActivePlantingByGreenhouse(greenhouseId);
+            saveSimulationSession({
+              idSesion: `local-${activePlanting.idPlantacion}`,
+              idInvernadero: greenhouseId,
+              idCultivo: activePlanting.idCultivo,
+              greenhouseName: activePlanting.nombreInvernadero ?? greenhouseNameFromQuery,
+              cropName: activePlanting.nombreCultivo ?? "Cosecha seleccionada",
+              nombresSensor: dbSensors.length > 0 ? dbSensors : sensorNamesFromQuery,
+              nombresActuador: dbActuators.length > 0 ? dbActuators : actuatorNamesFromQuery
+            });
+            navigate("/simulacion/dashboard", { replace: true });
+            return;
+          } catch {
+            setError("Este invernadero esta en produccion pero no se encontro una plantacion activa.");
+            return;
+          }
+        }
+
         const userId = session.idUsuario || (session.token && session.correo ? await resolveCurrentUserId(session.correo, session.token) : "");
         setResolvedUserId(userId);
 
@@ -150,6 +179,11 @@ export function SimulationStartPage() {
       return;
     }
 
+    if (entry.invernadero.estadoInvernadero === "PRODUCCION") {
+      navigate("/simulacion/dashboard", { replace: true });
+      return;
+    }
+
     const currentUserId = session.idUsuario || resolvedUserId;
     if (!currentUserId) {
       setError("Debes iniciar sesion para actualizar el estado del invernadero.");
@@ -177,14 +211,33 @@ export function SimulationStartPage() {
 
     try {
       setError("");
-      await updateGreenhouse(entry.invernadero.idInvernadero, {
-        idUsuario: session.idUsuario || resolvedUserId,
-        nombre: entry.invernadero.name,
-        ubicacion: entry.invernadero.location,
-        estado: "PRODUCCION"
+      const createdPlanting = await createPlanting({
+        idUsuario: currentUserId,
+        idInvernadero: entry.invernadero.idInvernadero,
+        idCultivo: selectedCropId,
+        fechaPlantado: new Date().toISOString().slice(0, 10),
+        fechaFinalizacion: null,
+        estado: "ACTIVA"
       });
+
+      try {
+        await updateGreenhouse(entry.invernadero.idInvernadero, {
+          idUsuario: currentUserId,
+          nombre: entry.invernadero.name,
+          ubicacion: entry.invernadero.location,
+          estado: "PRODUCCION"
+        });
+      } catch (updateError) {
+        try {
+          await deletePlanting(createdPlanting.idPlantacion);
+        } catch {
+          // ignore rollback failures
+        }
+
+        throw updateError;
+      }
     } catch (statusError) {
-      setError(statusError instanceof Error ? statusError.message : "No se pudo actualizar el estado del invernadero");
+      setError(statusError instanceof Error ? statusError.message : "No se pudo registrar la plantacion");
       return;
     }
 
@@ -193,8 +246,11 @@ export function SimulationStartPage() {
         idInvernadero: entry.invernadero.idInvernadero,
         idCultivo: selectedCropId
       });
+      const selectedCropName = crops.find((item) => item.idCultivo === selectedCropId)?.name ?? "Cosecha seleccionada";
       saveSimulationSession({
         ...nextSession,
+        greenhouseName: entry.invernadero.name,
+        cropName: selectedCropName,
         nombresSensor: entry.invernadero.sensores,
         nombresActuador: entry.invernadero.actuadores
       });

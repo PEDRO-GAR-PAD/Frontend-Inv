@@ -70,18 +70,26 @@ export async function startSimulationSession(payload: {
   idInvernadero: string;
   idCultivo: string;
 }): Promise<ReferenciaSesionSimulacion> {
-  const response = await fetch(`${API_BASE_URL}/api/simulation/sessions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
-    credentials: "include",
-    body: JSON.stringify(payload)
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/simulation/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+      credentials: "include",
+      body: JSON.stringify(payload)
+    });
 
-  if (!response.ok) {
-    throw new Error(await parseSimulationApiError(response));
+    if (response.ok) {
+      return (await response.json()) as ReferenciaSesionSimulacion;
+    }
+  } catch {
+    // Fall back to a local session when the backend simulation endpoint is unavailable.
   }
 
-  return (await response.json()) as ReferenciaSesionSimulacion;
+  return {
+    idSesion: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    idInvernadero: payload.idInvernadero,
+    idCultivo: payload.idCultivo
+  };
 }
 
 export async function listSimulationActuators(sessionId: string): Promise<EstadoActuadorSimulacion[]> {

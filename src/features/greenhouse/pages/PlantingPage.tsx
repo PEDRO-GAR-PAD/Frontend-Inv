@@ -28,13 +28,15 @@ const FORMULARIO_INICIAL: FormularioPlantacion = {
   estado: "ACTIVA"
 };
 
-function toLocalDateTimeInput(value: string | null): string {
+function toDateInput(value: string | null): string {
   if (!value) return "";
-  return value.slice(0, 16);
+  return value.slice(0, 10);
 }
 
 function getStatusLabel(estado: EstadoPlantacion): string {
-  return estado === "ACTIVA" ? "Activa" : "Inactiva";
+  if (estado === "ACTIVA") return "Activa";
+  if (estado === "FINALIZADA") return "Finalizada";
+  return "Inactiva";
 }
 
 export function PlantingPage() {
@@ -190,8 +192,8 @@ export function PlantingPage() {
     setForm({
       idInvernadero: item.idInvernadero,
       idCultivo: item.idCultivo,
-      fechaPlantado: toLocalDateTimeInput(item.fechaPlantado),
-      fechaFinalizacion: toLocalDateTimeInput(item.fechaFinalizacion),
+      fechaPlantado: toDateInput(item.fechaPlantado),
+      fechaFinalizacion: toDateInput(item.fechaFinalizacion),
       estado: item.estado
     });
   }
@@ -262,7 +264,7 @@ export function PlantingPage() {
               <label htmlFor="plantacion-fecha-plantado">Fecha de plantado</label>
               <input
                 id="plantacion-fecha-plantado"
-                type="datetime-local"
+                type="date"
                 value={form.fechaPlantado}
                 onChange={(event) => {
                   setSuccessMessage("");
@@ -276,7 +278,7 @@ export function PlantingPage() {
               <label htmlFor="plantacion-fecha-finalizacion">Fecha finalizada</label>
               <input
                 id="plantacion-fecha-finalizacion"
-                type="datetime-local"
+                type="date"
                 value={form.fechaFinalizacion}
                 onChange={(event) => {
                   setSuccessMessage("");
@@ -330,6 +332,7 @@ export function PlantingPage() {
             >
               <option value="ACTIVA">Activas</option>
               <option value="INACTIVA">Inactivas</option>
+              <option value="FINALIZADA">Finalizadas</option>
               <option value="TODAS">Todas</option>
             </select>
           </div>
@@ -354,8 +357,8 @@ export function PlantingPage() {
                   <tr key={item.idPlantacion}>
                     <td>{item.nombreInvernadero}</td>
                     <td>{item.nombreCultivo}</td>
-                    <td>{toLocalDateTimeInput(item.fechaPlantado).replace("T", " ")}</td>
-                    <td>{item.fechaFinalizacion ? toLocalDateTimeInput(item.fechaFinalizacion).replace("T", " ") : "-"}</td>
+                    <td>{toDateInput(item.fechaPlantado)}</td>
+                    <td>{item.fechaFinalizacion ? toDateInput(item.fechaFinalizacion) : "-"}</td>
                     <td>{getStatusLabel(item.estado)}</td>
                     <td className="planting-table-actions">
                       <button type="button" className="secondary-action" onClick={() => onEdit(item)}>

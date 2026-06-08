@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { EstadoActuadorSimulacion } from "../model/simulation.types";
+import type { EstadoActuadorSimulacion, SimulationRealtimeDTO } from "../model/simulation.types";
 import { clearSimulationSession, getSimulationSession } from "../model/simulationSession.store";
 import { listSimulationActuators, toggleSimulationActuator } from "../services/simulationApi";
+import { getRealtimeSimulation } from "../services/simulationApi";
+import { connectWebSocket } from "../services/websocket";
 import "../styles/simulation.css";
 
 const LOCAL_ACTUADORES: EstadoActuadorSimulacion[] = [
-  { IdActuador: "VENTILADOR", label: "Ventilador", activo: false, actualizadoEn: "" },
-  { IdActuador: "RIEGO", label: "Riego", activo: false, actualizadoEn: "" },
-  { IdActuador: "LUZ", label: "Luz", activo: false, actualizadoEn: "" },
-  { IdActuador: "EXTRACTORES", label: "Extractores de Aire", activo: false, actualizadoEn: "" },
-  { IdActuador: "MALLA", label: "Malla", activo: false, actualizadoEn: "" }
+  { IdActuador: 1 , label: "VENTILADOR", activo: false, actualizadoEn: "" },
+  { IdActuador: 2 , label: "RIEGO", activo: false, actualizadoEn: "" },
+  { IdActuador: 3 , label: "LUZ", activo: false, actualizadoEn: "" },
+  { IdActuador: 4 , label: "EXTRACTORES DE AIRE", activo: false, actualizadoEn: "" },
+  { IdActuador: 5 , label: "MALLA", activo: false, actualizadoEn: "" }
 ];
 
 function normalizeActuatorLabel(value: string): string {
@@ -24,6 +26,45 @@ function filterAssignedActuators(items: EstadoActuadorSimulacion[], assignedName
 
   const assigned = new Set(assignedNames.map(normalizeActuatorLabel));
   return items.filter((item) => assigned.has(normalizeActuatorLabel(item.label)));
+}
+
+function getRealtimeActuatorState(item: EstadoActuadorSimulacion, realtime: Partial<SimulationRealtimeDTO>): boolean {
+  const key = `${item.IdActuador} ${item.label}`.toLowerCase();
+
+  if (key.includes("VENTILADOR")) {
+    return Boolean(realtime.ventilador);
+  }
+
+  if (key.includes("RIEGO") || key.includes("BOMBA")) {
+    return Boolean(realtime.bomba);
+  }
+
+  if (key.includes("LUZ")) {
+    return Boolean(realtime.luz);
+  }
+
+  if (key.includes("EXTRACTORES DE AIRE")) {
+    return Boolean(realtime.extractor);
+  }
+
+  if (key.includes("MALLA")) {
+    return Boolean(realtime.malla);
+  }
+
+  return item.activo;
+}
+
+function applyRealtimeActuatorState(
+  items: EstadoActuadorSimulacion[],
+  realtime: Partial<SimulationRealtimeDTO>
+): EstadoActuadorSimulacion[] {
+  const actualizadoEn = new Date().toISOString();
+
+  return items.map((item) => ({
+    ...item,
+    activo: getRealtimeActuatorState(item, realtime),
+    actualizadoEn
+  }));
 }
 
 export function SimulationActuatorsPage() {
@@ -58,6 +99,47 @@ export function SimulationActuatorsPage() {
     void load();
   }, [navigate]);
 
+  useEffect(() => {
+    const session = getSimulationSession();
+    if (!session || session.idSesion.startsWith("local-")) {
+      return undefined;
+    }
+
+    const greenhouseId = session.idInvernadero;
+
+    const disconnect = connectWebSocket(
+  greenhouseId,
+  (payload) => {
+
+    console.log(
+      "WEBSOCKET PAYLOAD",
+      payload
+    );
+
+    setItems((current) =>
+      applyRealtimeActuatorState(current, payload)
+    );
+  }
+);
+
+    async function actualizarEstados() {
+      try {
+        const realtime = await getRealtimeSimulation(greenhouseId);
+        console.log("REALTIME", realtime);
+        setItems((current) => applyRealtimeActuatorState(current, realtime));
+      } catch (realtimeError) {
+        console.error("Error actualizando actuadores", realtimeError);
+      }
+    }
+
+    void actualizarEstados();
+    const interval = setInterval(actualizarEstados, 2000);
+
+    return () => {
+      clearInterval(interval);
+      disconnect();
+    };
+  }, []);
   async function handleToggle(item: EstadoActuadorSimulacion) {
     const session = getSimulationSession();
     if (!session) {
@@ -65,7 +147,6 @@ export function SimulationActuatorsPage() {
       navigate("/simulacion/inicio", { replace: true });
       return;
     }
-
     if (session.idSesion.startsWith("local-")) {
       setItems((current) =>
         current.map((state) =>
@@ -75,13 +156,11 @@ export function SimulationActuatorsPage() {
       setError("");
       return;
     }
-
     const previous = [...items];
     const optimistic = items.map((state) =>
       state.IdActuador === item.IdActuador ? { ...state, activo: !state.activo } : state
     );
     setItems(optimistic);
-
     try {
       const updated = await toggleSimulationActuator(session.idSesion, item.IdActuador, !item.activo);
       setItems((current) =>
@@ -106,7 +185,7 @@ export function SimulationActuatorsPage() {
                 type="button"
                 className={item.activo ? "actuator-circle active" : "actuator-circle inactive"}
                 onClick={() => void handleToggle(item)}
-                aria-label={`Alternar ${item.label}`}
+                aria-label={item.label}
               >
                 <span className="actuator-inner-icon" aria-hidden="true" />
               </button>

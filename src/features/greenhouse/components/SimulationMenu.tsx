@@ -22,7 +22,9 @@ export function SimulationMenu() {
   return (
     <nav className="simulation-menu" aria-label="Menu de simulacion">
       <button type="button" aria-label="Ir a actuadores" onClick={() => navigate("/simulacion/actuadores")}>Actuadores</button>
-      <button type="button" aria-label="Ir a eventos climaticos" onClick={() => navigate("/simulacion/eventos")}>Eventos climaticos</button>
+      {/*
+      *<button type="button" aria-label="Ir a eventos climaticos" onClick={() => navigate("/simulacion/eventos")}>Eventos climaticos</button>
+      */}
       <button type="button" aria-label="Ir a dashboard" onClick={() => navigate("/simulacion/dashboard")}>Dashboard</button>
       <button type="button" aria-label="Salir del invernadero" className="exit-button" onClick={() => void handleExit()}>
         Salir del invernadero

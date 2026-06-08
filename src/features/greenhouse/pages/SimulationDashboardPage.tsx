@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { getSimulationSession, clearSimulationSession } from "../model/simulationSession.store";
 import { updateGreenhouse } from "../services/greenhouseApi";
 import { finalizePlanting } from "../services/plantingApi";
-import { getSimulationDashboard, exitSimulationSession, type SimulationDashboardSummary } from "../services/simulationApi";
+import { getSimulationDashboard, exitSimulationSession, getRealtimeSimulation, type SimulationDashboardSummary } from "../services/simulationApi";
 import { getUserSession } from "../model/session.store";
+import { connectWebSocket } from "../services/websocket";
 import "../styles/simulation.css";
 
 interface SerieMetricas {
@@ -13,6 +14,20 @@ interface SerieMetricas {
   light: number[];
   co2: number[];
 }
+
+interface BackendLecturaSensor {
+  idLectura?: number;
+  valor?: number;
+  fechaHora?: string;
+  invernaderoSensor?: {
+    idInvSensor?: number;
+    sensor?: {
+      nombre?: string;
+    } | null;
+  } | null;
+}
+
+const MAX_CO2_POINTS = 12;
 
 function generarPuntos(seed: number, center: number, spread: number): number[] {
   return Array.from({ length: 8 }, (_, index) => {
@@ -39,21 +54,41 @@ function convertirPuntosSvg(values: number[], width: number, height: number, pad
     .join(" ");
 }
 
-function convertirRutaArea(values: number[], width: number, height: number, padding: number): string {
+function convertirRutaCurva(
+  values: number[],
+  width: number,
+  height: number,
+  padding: number
+): string {
+  if (values.length < 2) return "";
+
   const step = (width - padding * 2) / Math.max(1, values.length - 1);
+
   const max = Math.max(...values);
   const min = Math.min(...values);
   const range = Math.max(1, max - min);
 
-  const points = values.map((value, index) => {
-    const x = padding + index * step;
-    const y = padding + ((max - value) / range) * (height - padding * 2);
-    return { x, y };
-  });
+  const points = values.map((value, index) => ({
+    x: padding + index * step,
+    y: padding + ((max - value) / range) * (height - padding * 2)
+  }));
 
-  const start = points[0];
-  const linePath = points.map((point) => `L ${point.x} ${point.y}`).join(" ");
-  return `M ${start.x} ${height - padding} ${linePath} L ${points[points.length - 1].x} ${height - padding} Z`;
+  let d = `M ${points[0].x} ${points[0].y}`;
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+
+    const cx = (prev.x + curr.x) / 2;
+
+    d += `
+      C ${cx} ${prev.y},
+        ${cx} ${curr.y},
+        ${curr.x} ${curr.y}
+    `;
+  }
+
+  return d;
 }
 
 function obtenerSerieMetricas(summary: SimulationDashboardSummary | null): SerieMetricas {
@@ -67,9 +102,57 @@ function obtenerSerieMetricas(summary: SimulationDashboardSummary | null): Serie
   };
 }
 
+function ordenarLecturasPorTiempo(lecturas: BackendLecturaSensor[]): BackendLecturaSensor[] {
+  return [...lecturas].sort((a, b) => {
+    const fechaA = a.fechaHora ? new Date(a.fechaHora).getTime() : 0;
+    const fechaB = b.fechaHora ? new Date(b.fechaHora).getTime() : 0;
+
+    if (fechaA !== fechaB) {
+      return fechaA - fechaB;
+    }
+
+    return (a.idLectura ?? 0) - (b.idLectura ?? 0);
+  });
+}
+
+function extraerSerieCO2Historica(lecturas: BackendLecturaSensor[]): number[] {
+  return ordenarLecturasPorTiempo(lecturas)
+    .filter((lectura) => {
+      const nombreSensor = lectura.invernaderoSensor?.sensor?.nombre?.trim().toLowerCase();
+      return nombreSensor === "co2" || nombreSensor?.includes("co2") || lectura.invernaderoSensor?.idInvSensor === 3;
+    })
+    .map((lectura) => Number(lectura.valor ?? 0))
+    .filter((valor) => Number.isFinite(valor))
+    .slice(-MAX_CO2_POINTS);
+}
+
+function construirSerieCo2Anterior(
+  anterior: number[],
+  historial: number[],
+  valorActual: number
+): number[] {
+  const base = anterior.length > 0 ? anterior : historial;
+  const siguiente = base.length > 0 ? [...base] : [];
+  const valor = Number.isFinite(valorActual) ? valorActual : siguiente[siguiente.length - 1] ?? 0;
+
+  if (siguiente.length === 0) {
+    siguiente.push(valor);
+  }
+
+  siguiente.push(valor);
+
+  if (siguiente.length === 1) {
+    siguiente.push(valor);
+  }
+
+  return siguiente.slice(-MAX_CO2_POINTS);
+}
+
 export function SimulationDashboardPage() {
   const navigate = useNavigate();
   const [resumen, setResumen] = useState<SimulationDashboardSummary | null>(null);
+  const [realtime, setRealtime] = useState<any>(null);
+  const [co2Serie, setCo2Serie] = useState<number[]>([]);
   const [mensajeError, setMensajeError] = useState("");
   const [errorFinalizacion, setErrorFinalizacion] = useState("");
   const [finalizando, setFinalizando] = useState(false);
@@ -77,6 +160,7 @@ export function SimulationDashboardPage() {
   useEffect(() => {
     async function load() {
       const session = getSimulationSession();
+
       if (!session) {
         navigate("/simulacion/inicio", { replace: true });
         return;
@@ -92,12 +176,18 @@ export function SimulationDashboardPage() {
             selectedCropName: session.cropName ?? "Cosecha seleccionada",
             lastUpdatedAt: new Date().toISOString()
           });
-          setMensajeError("");
-          return;
+        } else {
+          const data = await getSimulationDashboard(session.idSesion);
+          setResumen(data);
         }
 
-        const data = await getSimulationDashboard(session.idSesion);
-        setResumen(data);
+        const realtimeData = await getRealtimeSimulation("1");
+        setRealtime(realtimeData);
+
+        setCo2Serie((anterior) =>
+          construirSerieCo2Anterior(anterior, [], Number(realtimeData?.co2 ?? 0))
+        );
+      
         setMensajeError("");
       } catch (loadError) {
         setMensajeError(loadError instanceof Error ? loadError.message : "No se pudo cargar dashboard");
@@ -105,7 +195,27 @@ export function SimulationDashboardPage() {
     }
 
     void load();
+
+    const interval = setInterval(() => {
+      void load();
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, [navigate]);
+
+  useEffect(() => {
+    // 1. Obtenemos la sesión actual para saber qué invernadero escuchar
+    const session = getSimulationSession();
+    if (!session) return;
+
+    // 2. Pasamos el ID al socket y atrapamos el dato en setRealtime
+    const disconnect = connectWebSocket(session.idInvernadero, (payload) => {
+      console.log("Dato recibido vía WebSocket:", payload);
+      setRealtime(payload); 
+    });
+
+    return disconnect;
+  }, []);
 
   const series = obtenerSerieMetricas(resumen);
   const session = getSimulationSession();
@@ -116,10 +226,10 @@ export function SimulationDashboardPage() {
   const showTemperature = !hasAssignedSensors || assignedSensors.has("temperatura");
   const showLight = !hasAssignedSensors || assignedSensors.has("luz");
   const showCo2 = !hasAssignedSensors || assignedSensors.has("co2");
-  const humidityValue = series.humidity[series.humidity.length - 1];
-  const temperatureValue = series.temperature[series.temperature.length - 1];
-  const lightValue = series.light[series.light.length - 1];
-  const co2Value = series.co2[series.co2.length - 1];
+  const humidityValue = realtime?.humedad ?? 0;
+  const temperatureValue = realtime?.temperatura ?? 0;
+  const lightValue = realtime?.luminosidad ?? 0;
+  const co2Value = realtime?.co2 ?? 0;
 
   const humidityPercent = Math.max(0, Math.min(100, humidityValue));
   const temperaturePercent = Math.max(0, Math.min(100, (temperatureValue / 40) * 100));
@@ -128,9 +238,10 @@ export function SimulationDashboardPage() {
   const co2Width = 520;
   const co2Height = 130;
   const co2Padding = 8;
-  const puntosCo2 = convertirPuntosSvg(series.co2, co2Width, co2Height, co2Padding);
-  const rutaAreaCo2 = convertirRutaArea(series.co2, co2Width, co2Height, co2Padding);
-  const tendenciaCo2AlAlza = co2Value >= (series.co2[series.co2.length - 2] ?? co2Value);
+  const co2SerieHistorica = co2Serie.length > 0 ? co2Serie : [co2Value, co2Value];
+  const puntosCo2 = convertirPuntosSvg(co2SerieHistorica, co2Width, co2Height, co2Padding);
+  const rutaCurvaCo2 = convertirRutaCurva(co2SerieHistorica, co2Width, co2Height, co2Padding);
+  const tendenciaCo2AlAlza = co2SerieHistorica[co2SerieHistorica.length - 1] >= (co2SerieHistorica[co2SerieHistorica.length - 2] ?? co2SerieHistorica[0]);
 
   return (
     <section className="management-page" aria-label="Simulacion - Dashboard">
@@ -285,6 +396,8 @@ export function SimulationDashboardPage() {
               <span>ppm</span>
             </p>
 
+            <p className="dashboard-chart-caption">Historial CO2 en tiempo real</p>
+
             <svg viewBox={`0 0 ${co2Width} ${co2Height}`} className="dashboard-chart-svg dashboard-chart-svg-long" aria-label="Grafica de CO2">
               <defs>
                 <linearGradient id="fill-co2-long" x1="0" y1="0" x2="0" y2="1">
@@ -292,8 +405,25 @@ export function SimulationDashboardPage() {
                   <stop offset="100%" stopColor="#3867e8" stopOpacity="0.04" />
                 </linearGradient>
               </defs>
-              <path d={rutaAreaCo2} fill="url(#fill-co2-long)" />
-              <polyline points={puntosCo2} fill="none" stroke="#3867e8" strokeWidth="3" strokeLinecap="round" />
+              <path
+              d={rutaCurvaCo2}
+              fill="none"
+              stroke="#3867e8"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              />
+              {co2SerieHistorica.map((value, index) => {
+                const step = (co2Width - co2Padding * 2) / Math.max(1, co2SerieHistorica.length - 1);
+                const max = Math.max(...co2SerieHistorica);
+                const min = Math.min(...co2SerieHistorica);
+                const range = Math.max(1, max - min);
+                const cx = co2Padding + index * step;
+                const cy = co2Padding + ((max - value) / range) * (co2Height - co2Padding * 2);
+
+                return <circle key={`${index}-${value}`} cx={cx} cy={cy} r="3.5" fill="#3867e8" stroke="#ffffff" strokeWidth="1.5" />;
+              })}
             </svg>
           </article> : null}
 
@@ -306,7 +436,62 @@ export function SimulationDashboardPage() {
             </article>
           ) : null}
         </div>
+      <div
+  style={{
+    marginTop: "24px",
+    padding: "16px",
+    borderRadius: "12px",
+    background: "#ffffff",
+    border: "1px solid #d7e5d7"
+  }}
+>
+  <h2 style={{ marginBottom: "16px" }}>
+    Estado de Actuadores
+  </h2>
 
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+      gap: "12px"
+    }}
+  >
+    <div className="dashboard-chart-card">
+      <h3>🌡️ Ventilador</h3>
+      <strong>
+        {realtime?.ventilador ? "🟢 ACTIVO" : "🔴 APAGADO"}
+      </strong>
+    </div>
+
+    <div className="dashboard-chart-card">
+      <h3>💧 Riego</h3>
+      <strong>
+        {realtime?.bomba ? "🟢 ACTIVO" : "🔴 APAGADO"}
+      </strong>
+    </div>
+
+    <div className="dashboard-chart-card">
+      <h3>💡 Luz</h3>
+      <strong>
+        {realtime?.luz ? "🟢 ACTIVO" : "🔴 APAGADO"}
+      </strong>
+    </div>
+
+    <div className="dashboard-chart-card">
+      <h3>🌫️ Extractor</h3>
+      <strong>
+        {realtime?.extractor ? "🟢 ACTIVO" : "🔴 APAGADO"}
+      </strong>
+    </div>
+
+    <div className="dashboard-chart-card">
+      <h3>☀️ Malla</h3>
+      <strong>
+        {realtime?.malla ? "🟢 ACTIVO" : "🔴 APAGADO"}
+      </strong>
+    </div>
+  </div>
+</div>
         {errorFinalizacion ? <p className="field-error">{errorFinalizacion}</p> : null}
         {mensajeError ? <p className="field-error">{mensajeError}</p> : null}
       </div>

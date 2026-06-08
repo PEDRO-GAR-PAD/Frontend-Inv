@@ -32,7 +32,7 @@ export function getGreenhouseRoutes() {
       <Route path="/simulacion/vacio" element={<SimulationEmptyStatePage />} />
       <Route element={<SimulationLayout />}>
         <Route path="/simulacion/actuadores" element={<SimulationActuatorsPage />} />
-        <Route path="/simulacion/eventos" element={<SimulationClimateEventsPage />} />
+        {/*<Route path="/simulacion/eventos" element={<SimulationClimateEventsPage />} />*/}
         <Route path="/simulacion/dashboard" element={<SimulationDashboardPage />} />
       </Route>
     </>

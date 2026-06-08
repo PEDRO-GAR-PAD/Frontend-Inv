@@ -90,11 +90,10 @@
 
 .dashboard-chart-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-areas:
-    "humidity temperature"
-    "co2 co2"
-    "light light";
+    "humidity temperature light"
+    "co2 co2 co2";
   gap: 1rem;
 }
 
@@ -412,8 +411,8 @@
     grid-template-areas:
       "humidity"
       "temperature"
-      "co2"
-      "light";
+      "light"
+      "co2";
   }
 
   .chart-co2-long {
@@ -425,3 +424,5 @@
     gap: 1rem;
   }
 }
+
+

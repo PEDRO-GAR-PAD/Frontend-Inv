@@ -8,7 +8,9 @@ import { clearSimulationSession, getSimulationSession } from "../model/simulatio
 
 const simulationNavigationItems: ElementoNavegacion[] = [
   { label: "Dashboard", path: "/simulacion/dashboard" },
+  /*
   { label: "Eventos climaticos", path: "/simulacion/eventos" },
+   */
   { label: "Actuadores", path: "/simulacion/actuadores" }
 ];
 

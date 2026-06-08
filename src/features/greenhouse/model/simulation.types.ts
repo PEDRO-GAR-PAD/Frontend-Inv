@@ -32,7 +32,7 @@ export interface ReferenciaSesionSimulacion {
 }
 
 export interface EstadoActuadorSimulacion {
-  IdActuador: string;
+  IdActuador: number;
   label: string;
   activo: boolean;
   actualizadoEn: string;
@@ -43,4 +43,20 @@ export interface EstadoEventoClimaticoSimulacion {
   label: string;
   activo: boolean;
   actualizadoEn: string;
+}
+
+export interface SimulationRealtimeDTO {
+  temperatura: number;
+  humedad: number;
+  luminosidad: number;
+  co2: number;
+
+  ventilador: boolean;
+  bomba: boolean;
+  extractor: boolean;
+  luz: boolean;
+  malla: boolean;
+
+  cultivo: string;
+  invernadero: string;
 }

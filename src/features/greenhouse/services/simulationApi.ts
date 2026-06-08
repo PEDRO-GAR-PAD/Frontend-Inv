@@ -3,7 +3,8 @@ import type {
   EstadoEventoClimaticoSimulacion,
   OpcionCultivoSeleccionable,
   ReferenciaSesionSimulacion,
-  RespuestaEntradaSimulacion
+  RespuestaEntradaSimulacion,
+  SimulationRealtimeDTO
 } from "../model/simulation.types";
 import { getUserSession } from "../model/session.store";
 
@@ -14,6 +15,12 @@ const API_BASE_URL =
 interface ApiErrorPayload {
   message?: string;
 }
+
+type RawEstadoActuadorSimulacion = Partial<EstadoActuadorSimulacion> & {
+  actuatorKey?: number;
+  isActive?: boolean;
+  updatedAt?: string;
+};
 
 function buildAuthHeaders(): Record<string, string> {
   const session = getUserSession();
@@ -102,12 +109,13 @@ export async function listSimulationActuators(sessionId: string): Promise<Estado
     throw new Error(await parseSimulationApiError(response));
   }
 
-  return (await response.json()) as EstadoActuadorSimulacion[];
+  const items = (await response.json()) as RawEstadoActuadorSimulacion[];
+  return items.map(normalizeSimulationActuator);
 }
 
 export async function toggleSimulationActuator(
   sessionId: string,
-  actuatorKey: string,
+  actuatorKey: number,
   isActive: boolean
 ): Promise<EstadoActuadorSimulacion> {
   const response = await fetch(
@@ -124,7 +132,7 @@ export async function toggleSimulationActuator(
     throw new Error(await parseSimulationApiError(response));
   }
 
-  return (await response.json()) as EstadoActuadorSimulacion;
+  return normalizeSimulationActuator((await response.json()) as RawEstadoActuadorSimulacion);
 }
 
 export async function listSimulationClimateEvents(sessionId: string): Promise<EstadoEventoClimaticoSimulacion[]> {
@@ -189,6 +197,53 @@ export async function exitSimulationSession(sessionId: string): Promise<void> {
     method: "POST",
     headers: buildAuthHeaders(),
     credentials: "include"
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseSimulationApiError(response));
+  }
+}
+
+export async function getRealtimeSimulation(
+  greenhouseId: string
+): Promise<SimulationRealtimeDTO> {
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/simulation/realtime/${encodeURIComponent(greenhouseId)}`,
+    {
+      headers: buildAuthHeaders(),
+      credentials: "include"
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseSimulationApiError(response));
+  }
+
+  return (await response.json()) as SimulationRealtimeDTO;
+}
+
+function normalizeSimulationActuator(item: RawEstadoActuadorSimulacion): EstadoActuadorSimulacion {
+  const IdActuador = item.IdActuador ?? item.actuatorKey ?? 0;
+  const label = item.label ?? String(IdActuador);
+
+  return {
+    IdActuador,
+    label,
+    activo: item.activo ?? item.isActive ?? false,
+    actualizadoEn: item.actualizadoEn ?? item.updatedAt ?? new Date().toISOString()
+  };
+}
+
+export async function toggleActuatorControl(
+  idInvActuador: number,
+  estado: boolean
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/actuadores/control/${encodeURIComponent(idInvActuador)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...buildAuthHeaders() },
+    credentials: "include",
+    body: JSON.stringify({ estado })
   });
 
   if (!response.ok) {

@@ -13,6 +13,7 @@ export interface CrearCultivoPayload {
   humedadMaxima: number;
   luzMinima: number;
   luzMaxima: number;
+  co2Maxima: number;
 }
 
 export interface CultivoApiRespuesta {
@@ -25,6 +26,7 @@ export interface CultivoApiRespuesta {
   humedadMaxima: number;
   luzMinima: number;
   luzMaxima: number;
+  co2Maxima: number;
 }
 
 interface ApiErrorPayload {
@@ -47,6 +49,7 @@ interface BackendCultivo {
   humedadMax?: number | null;
   luzMin?: number | null;
   luzMax?: number | null;
+  co2Max?: number | null;
 }
 
 function buildAuthHeaders(): Record<string, string> {
@@ -81,7 +84,8 @@ function mapBackendCultivo(cultivo: BackendCultivo): CultivoApiRespuesta {
     humedadMinima: Number(cultivo.humedadMin ?? 0),
     humedadMaxima: Number(cultivo.humedadMax ?? 0),
     luzMinima: Number(cultivo.luzMin ?? 0),
-    luzMaxima: Number(cultivo.luzMax ?? 0)
+    luzMaxima: Number(cultivo.luzMax ?? 0),
+    co2Maxima: Number(cultivo.co2Max ?? 0)
   };
 }
 
@@ -107,9 +111,19 @@ export async function createCrop(payload: CrearCultivoPayload): Promise<void> {
       humedadMin: payload.humedadMinima,
       humedadMax: payload.humedadMaxima,
       luzMin: payload.luzMinima,
-      luzMax: payload.luzMaxima
+      luzMax: payload.luzMaxima,
+      co2Max: payload.co2Maxima
     })
   });
+
+  // AGREGAR AQUÍ
+  console.log("CREATE CROP STATUS:", response.status);
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  console.log("CULTIVO CREADO CORRECTAMENTE");
 
   if (!response.ok) {
     throw new Error(await parseApiError(response));

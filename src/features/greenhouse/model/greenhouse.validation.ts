@@ -55,11 +55,13 @@ function validateRange(minimo: string, maximo: string, label: string): string | 
   return validateMinLessThanMax(minimo, maximo, label);
 }
 
+// Búscalo y modifícalo así:
 export function validateFormularioCultivo(cultivo: FormularioCultivo): ErroresFormularioCultivo {
   return {
     nombre: validateRequired(cultivo.nombre, "Nombre de cultivo"),
     temperatura: validateRange(cultivo.temperaturaMinima, cultivo.temperaturaMaxima, "Temperatura"),
     humedad: validateRange(cultivo.humedadMinima, cultivo.humedadMaxima, "Humedad"),
-    luz: validateRange(cultivo.luzMinima, cultivo.luzMaxima, "Luz")
+    luz: validateRange(cultivo.luzMinima, cultivo.luzMaxima, "Luz"),
+    co2: validateRequired(cultivo.co2Maxima, "CO2 máximo") // <-- NUEVO
   };
 }

@@ -26,6 +26,7 @@ export interface FormularioCultivo {
   humedadMaxima: string;
   luzMinima: string;
   luzMaxima: string;
+  co2Maxima: string;
 }
 
 export interface ErroresFormularioCultivo {
@@ -33,6 +34,7 @@ export interface ErroresFormularioCultivo {
   temperatura?: string;
   humedad?: string;
   luz?: string;
+  co2?: string;
 }
 
 export interface ElementoNavegacion {

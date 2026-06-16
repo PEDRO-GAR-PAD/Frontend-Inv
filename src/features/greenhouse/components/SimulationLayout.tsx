@@ -37,10 +37,10 @@ export function SimulationLayout() {
       if (!current) return;
 
       if (document.hidden) {
-        // give a brief grace period before expiring (30s)
         inactivityTimer = window.setTimeout(() => {
-          clearSimulationSession();
-        }, 30 * 1000);
+        console.log("Sesión expirada por inactividad");
+        clearSimulationSession();
+        }, 60 * 60 * 1000); // 1 hora
       } else {
         if (inactivityTimer) {
           window.clearTimeout(inactivityTimer);

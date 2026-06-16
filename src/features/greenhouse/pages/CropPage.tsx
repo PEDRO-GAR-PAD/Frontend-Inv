@@ -16,7 +16,8 @@ export function CropPage() {
     humedadMinima: "",
     humedadMaxima: "",
     luzMinima: "",
-    luzMaxima: ""
+    luzMaxima: "",
+    co2Maxima: ""
   });
   const [errors, setErrors] = useState<ErroresFormularioCultivo>({});
   const [successMessage, setSuccessMessage] = useState("");
@@ -46,7 +47,8 @@ export function CropPage() {
     const nextErrors = validateFormularioCultivo(form);
     setErrors(nextErrors);
 
-    if (nextErrors.nombre || nextErrors.temperatura || nextErrors.humedad || nextErrors.luz) {
+    // CORRECCIÓN 1: Se agregó nextErrors.co2 para que no deje guardar si está vacío
+    if (nextErrors.nombre || nextErrors.temperatura || nextErrors.humedad || nextErrors.luz || nextErrors.co2) {
       setSuccessMessage("");
       return;
     }
@@ -67,7 +69,8 @@ export function CropPage() {
         humedadMinima: Number(form.humedadMinima),
         humedadMaxima: Number(form.humedadMaxima),
         luzMinima: Number(form.luzMinima),
-        luzMaxima: Number(form.luzMaxima)
+        luzMaxima: Number(form.luzMaxima),
+        co2Maxima: Number(form.co2Maxima)
       });
 
       setSuccessMessage("Cultivo configurado correctamente.");
@@ -78,7 +81,8 @@ export function CropPage() {
         humedadMinima: "",
         humedadMaxima: "",
         luzMinima: "",
-        luzMaxima: ""
+        luzMaxima: "",
+        co2Maxima: ""
       });
       setErrors({});
       setHasUnsavedChanges(false);
@@ -194,10 +198,29 @@ export function CropPage() {
               />
             </div>
           </div>
+          
+          {/* CORRECCIÓN 2: El Div se cerró correctamente arriba. Aquí empieza la NUEVA FILA PARA CO2 */}
+          <div className="crop-row">
+            <div className="crop-field">
+              <label htmlFor="co2-maxima">CO2 máximo (ppm):</label>
+              <input
+                id="co2-maxima"
+                inputMode="decimal"
+                value={form.co2Maxima}
+                onChange={(event) => {
+                  setSuccessMessage("");
+                  setForm((current) => ({ ...current, co2Maxima: event.target.value }));
+                }}
+                aria-invalid={Boolean(errors.co2)}
+              />
+            </div>
+          </div>
 
+          {/* MENSAJES DE ERROR (SIN DUPLICAR) */}
           {errors.humedad ? <p className="field-error range-error">{errors.humedad}</p> : null}
           {errors.luz ? <p className="field-error range-error">{errors.luz}</p> : null}
           {errors.temperatura ? <p className="field-error range-error">{errors.temperatura}</p> : null}
+          {errors.co2 ? <p className="field-error range-error">{errors.co2}</p> : null}
         </section>
 
         <button className="primary" type="submit">

@@ -12,7 +12,7 @@ import {
   listGreenhousesByUser,
   resolveCurrentUserId,
 } from "../services/greenhouseApi";
-import { startSimulationSession } from "../services/simulationApi";
+import { startSimulationSession,iniciarSimulacion } from "../services/simulationApi";
 import "../styles/simulation.css";
 
 function toLocalDateTimeApiValue(date: Date): string {
@@ -243,9 +243,13 @@ export function SimulationStartPage() {
 
     try {
       const nextSession = await startSimulationSession({
-        idInvernadero: entry.invernadero.idInvernadero,
-        idCultivo: selectedCropId
-      });
+  idInvernadero: entry.invernadero.idInvernadero,
+  idCultivo: selectedCropId
+});
+
+await iniciarSimulacion(
+  entry.invernadero.idInvernadero
+);
       const selectedCropName = crops.find((item) => item.idCultivo === selectedCropId)?.name ?? "Cosecha seleccionada";
       saveSimulationSession({
         ...nextSession,
